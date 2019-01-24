@@ -1,10 +1,21 @@
-import pandas as pd
+import gzip
 import numpy as np
+import six
+from six.moves import cPickle as cpickle
 
-n = 10000
+'''
+Pickle has changed from python 2 to python 3
+'''
 
-x1 = np.array([i / n for i in range(n)])
-x2 = np.array([i / n for i in range(n)])
-y = x1 + x2 + x1 ** 2
-df = pd.DataFrame({'x1': x1, 'x2': x2, 'y': y})
-df.to_csv('data/toy.csv')
+# Load the dataset
+# with gzip.open('data/mnist.pkl.gz', 'rb') as f:
+#     train_set, valid_set, test_set = cpickle.load(f, encoding='bytes')
+# print(train_set)
+
+# # np.save(open('data/mnist3' + '.npy', 'wb'), (train_set, valid_set, test_set))
+# train_set, valid_set, test_set = np.load('data/mnist3.npy')
+# print(train_set)
+
+x = np.array([[0,0,1],[0,1,0],[0,0,1]])
+a = np.nonzero(x)
+print(a)
