@@ -2,6 +2,7 @@ import scipy as np
 from scipy.special import logsumexp
 import time
 import matplotlib.pyplot as plt
+import random
 
 
 def softmax(x, axis):
@@ -11,21 +12,27 @@ def softmax(x, axis):
 
 
 class NN:
-
     def __init__(self, hidden_dims=(700, 300), input_size=784, output_size=10, init_method=0,
-                 non_linearity='relu', batch_size=16, lambd=0.01):
+                 non_linearity='relu', batch_size=16, lambd=0.01, save_path=None):
+        if save_path is not None:
+            self.load(save_path)
+            self.non_linearity = 'relu'
+            self.grads = list(range(self.n_grad))
+            return
+
         self.hidden_dims = hidden_dims
         self.input_size = input_size
         self.output_size = output_size
         self.init_method = init_method
         self.non_linearity = non_linearity
-        self.layers, self.grads = self.initialise_weights(self.hidden_dims)
-        self.n_grad = len(self.layers)
+        self.layers = self.initialise_weights()
         self.cache = []
         self.batch_size = batch_size
         self.lambd = lambd
+        self.n_grad = len(self.layers)
+        self.grads = list(range(self.n_grad))
 
-    def initialise_weights(self, hidden_dims):
+    def initialise_weights(self):
         def create_shape(shape, method=None):
             """
             Auxiliary function to build the layer matrices
@@ -41,9 +48,8 @@ class NN:
             if method == 0:
                 return np.zeros(shape=shape)
             elif method == 1:
-                tmp =  np.randn(*shape)*0.001
-                tmp[:,-1]=0
-                print(tmp)
+                tmp = np.randn(*shape) * 0.001
+                tmp[:, -1] = 0
                 return tmp
             else:
                 d = np.sqrt(6.0 / np.sum(shape))
@@ -51,16 +57,13 @@ class NN:
                 tmp[:, -1] = 0
                 return tmp
 
-        dims = (self.input_size, *hidden_dims, self.output_size)
+        dims = (self.input_size, *self.hidden_dims, self.output_size)
         layers = []
-        grads = []
         for i in range(len(dims) - 1):
             shape = (dims[i + 1], dims[i] + 1)
             layer = create_shape(shape)
-            grad = create_shape(shape, method=0)
             layers.append(layer)
-            grads.append(grad)
-        return layers, grads
+        return layers
 
     def activation(self, input, method):
         if method == 'relu':
@@ -111,7 +114,7 @@ class NN:
 
         return final
 
-    def backwards(self, input, output, labels, cost='cross_entropy'):
+    def backwards(self, input, output, labels, cost='cross_entropy', lambd=None):
         """
         :param input: not padded
         :param output: a list outputed by softmax
@@ -119,6 +122,8 @@ class NN:
         :param cost: if different must change how delta_final is computed
         :return:
         """
+        if lambd is None:
+            lambd = self.lambd
         # vector of -out(i) except for the label where it is 1-out(i)
         if cost == 'cross_entropy':
             delta = output
@@ -144,7 +149,7 @@ class NN:
                 dh = dh[:, np.newaxis]
 
             # compute grads
-            self.grads[self.n_grad - i - 1] = np.dot(delta, h.T) + self.lambd * self.layers[self.n_grad - i - 1]
+            self.grads[self.n_grad - i - 1] = np.dot(delta, h.T) + lambd * self.layers[self.n_grad - i - 1]
             # self.grads[self.n_grad - i - 1] = np.dot(delta, h.T)
             # print(self.grads[self.n_grad - i - 1].shape)
             # print('delta', delta, delta.shape)
@@ -209,7 +214,7 @@ class NN:
         # print(sum(results) / n)
         return sum(results) / n
 
-    def train(self, data, batch_size=None, epoch=10):
+    def train(self, data, batch_size=None, epoch=1):
         if batch_size is None:
             batch_size = self.batch_size
         x, y = data
@@ -270,6 +275,49 @@ class NN:
             running_loss += loss
         return running_loss / n
 
+    def save(self, path):
+        params = [self.hidden_dims,
+                  self.input_size,
+                  self.output_size,
+                  self.init_method,
+                  self.non_linearity,
+                  self.batch_size,
+                  self.lambd]
+        layers = self.layers
+        np.save(path, np.array([params, layers]))
+
+    def load(self, path):
+        params, layers = np.load(path)
+        [self.hidden_dims,
+         self.input_size,
+         self.output_size,
+         self.init_method,
+         self.non_linearity,
+         self.batch_size,
+         self.lambd] = params
+        self.layers = layers
+        self.cache = []
+        self.n_grad = len(self.layers)
+
+    def validate_gradient(self, input, label, epsilon=0.01):
+        output = self.forward(input)
+        self.backwards(input, output, label, lambd=0)
+        estimated = self.grads[0][:10, 0]
+
+        # experimental one
+        experimental_grad = []
+        for i in range(10):
+            self.layers[0][i, 0] += epsilon
+            out1 = self.forward(input)
+            loss1 = self.loss(out1, label)
+            self.layers[0][i, 0] -= 2 * epsilon
+            out2 = self.forward(input)
+            loss2 = self.loss(out2, label)
+            self.layers[0][i, 0] += epsilon
+            exp_grad = (loss2 - loss1) / (2 * epsilon)
+            experimental_grad.append(exp_grad)
+        return estimated, experimental_grad
+
 
 if __name__ == '__main__':
     pass
@@ -297,20 +345,64 @@ if __name__ == '__main__':
     # 40s for 10 000 pass without vectorisation
     # 4s with batch size = 16 for the same number also better results
 
+    '''
+        # Initialization
+        
     x = range(1, 11)
 
-    net = NN(init_method=2, lambd=3)
+    # net = NN(init_method=2, lambd=3)
+    #     glorot = net.train(train_set, batch_size=32)
+    #
+    #     net = NN(init_method=1, lambd=0.001)
+
+    
+    
+    net = NN(init_method=2, lambd=0.3)
     glorot = net.train(train_set, batch_size=32)
+    # Final loss : 0.164
 
     net = NN(init_method=1, lambd=0.001)
     normal = net.train(train_set, batch_size=32)
+    # Final loss : 0.153
 
     # net = NN(init_method=0)
     # zero = net.train(train_set, batch_size=32)
     zero = [2.303 for i in x]
 
+    print(glorot)
+    print(normal)
+    print(zero)
+    # [0.4124876058057489, 0.2662997300346983, 0.2375967445383851, 0.21861505655044505, 0.2045184431986952, 0.19348542256588774, 0.18458902033844407, 0.17719168811814748, 0.17093214995935127, 0.16554333060238804]
+    # [2.3023661364220462, 2.3021240802475194, 2.2324995769224905, 1.0423492724092405, 0.4803174067341066, 0.3395693788303885, 0.2632801221756668, 0.21154966723899485, 0.17630886575071358, 0.1515546423852113]
+    # [2.303, 2.303, 2.303, 2.303, 2.303, 2.303, 2.303, 2.303, 2.303, 2.303]
+
     plt.plot(x, zero, label='Zero')
     plt.plot(x, normal, label='Normal')
     plt.plot(x, glorot, label='Glorot')
+    plt.xlabel('Epoch')
+    plt.ylabel('Training Loss')
+    plt.legend()
     plt.savefig('Learning.pdf')
     plt.show()
+    '''
+
+    '''
+    # test saving module
+    net = NN(init_method=2, lambd=0.3)
+    net.train(train_set, batch_size=32)
+    net = NN(save_path='test.npy')
+    print(net.layers)
+    net.train(train_set)
+    '''
+
+    # x, y = train_set
+    # x = np.concatenate((x, np.ones(len(x))[:, np.newaxis]), axis=1)
+    # k = random.randint(0, 150)
+    # input, label = x[k][:, np.newaxis], y[k]
+    np.random.seed(5)
+    input = np.randn(785, 1)
+    label = 3
+    net = NN(save_path='test.npy')
+    estimated, experimental = net.validate_gradient(input, label, epsilon=0.1)
+    print('estimated', estimated)
+    print('experimental', experimental)
