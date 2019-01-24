@@ -1,16 +1,19 @@
 import scipy as np
 from scipy.special import logsumexp
 import time
+import matplotlib.pyplot as plt
 
 
 def softmax(x, axis):
-    return np.exp(x - logsumexp(x, axis=axis, keepdims=True))
+    y = np.exp(x)
+    return np.divide(y, np.sum(y, axis=axis))
+    # return np.exp(x - logsumexp(x, axis=axis, keepdims=True))
 
 
-class NN():
+class NN:
 
     def __init__(self, hidden_dims=(700, 300), input_size=784, output_size=10, init_method=0,
-                 non_linearity='relu', batch_size=16):
+                 non_linearity='relu', batch_size=16, lambd=0.01):
         self.hidden_dims = hidden_dims
         self.input_size = input_size
         self.output_size = output_size
@@ -20,6 +23,7 @@ class NN():
         self.n_grad = len(self.layers)
         self.cache = []
         self.batch_size = batch_size
+        self.lambd = lambd
 
     def initialise_weights(self, hidden_dims):
         def create_shape(shape, method=None):
@@ -37,10 +41,15 @@ class NN():
             if method == 0:
                 return np.zeros(shape=shape)
             elif method == 1:
-                return np.randn(shape)
+                tmp =  np.randn(*shape)*0.001
+                tmp[:,-1]=0
+                print(tmp)
+                return tmp
             else:
                 d = np.sqrt(6.0 / np.sum(shape))
-                return np.random.uniform(low=-d, high=d, size=shape)
+                tmp = np.random.uniform(low=-d, high=d, size=shape)
+                tmp[:, -1] = 0
+                return tmp
 
         dims = (self.input_size, *hidden_dims, self.output_size)
         layers = []
@@ -67,33 +76,39 @@ class NN():
         """
 
         # input is the 'h', out is the 'a' preactivations
-        for i , layer in enumerate(self.layers):
+        for i, layer in enumerate(self.layers):
             out = np.dot(layer, input)
 
             if np.isnan(out).any():
-                print(out)
+                # print(out)
                 raise ValueError('a', i)
 
             # The cache contains the preactivations except the input and the last one (that is fed
             # to a softmax so the computation is a bit different
             self.cache.append(out)
             input = np.concatenate((self.activation(out, self.non_linearity), np.ones((1, out.shape[1]))), axis=0)
+
             if np.isnan(input).any():
-                print(input)
+                # print(input)
                 raise ValueError('input', i)
+
             # Check if shape is not such as (25,), should not happen when using batch, but could happen with single pass
+            # or batch of size one
             try:
                 input.shape[1]
             except IndexError:
                 input = input[:, np.newaxis]
 
-        # remove last activation from cache
+        # remove last activation from cache (it gets a computation with the loss directly) and compute the final output
         self.cache.pop()
         final = softmax(out, axis=0)
+
         if np.isnan(final).any():
             print('out', out)
-            print('final', final)
+            print(np.exp(out))
+            # print('final', final)
             raise ValueError('final', i)
+
         return final
 
     def backwards(self, input, output, labels, cost='cross_entropy'):
@@ -106,11 +121,11 @@ class NN():
         """
         # vector of -out(i) except for the label where it is 1-out(i)
         if cost == 'cross_entropy':
-            delta = - output
+            delta = output
             try:
                 n = len(labels)
                 for i in range(n):
-                    delta[labels[i], i] += 1
+                    delta[labels[i], i] -= 1
             except TypeError:
                 delta[labels] += 1
             # print(delta, delta.shape)
@@ -129,7 +144,8 @@ class NN():
                 dh = dh[:, np.newaxis]
 
             # compute grads
-            self.grads[self.n_grad - i - 1] = np.dot(delta, h.T)
+            self.grads[self.n_grad - i - 1] = np.dot(delta, h.T) + self.lambd * self.layers[self.n_grad - i - 1]
+            # self.grads[self.n_grad - i - 1] = np.dot(delta, h.T)
             # print(self.grads[self.n_grad - i - 1].shape)
             # print('delta', delta, delta.shape)
             # print('h.T', h.T, h.T.shape)
@@ -151,14 +167,14 @@ class NN():
         self.grads[0] = np.dot(delta, input.T)
         return
 
-    def update(self, alpha=0.01):
+    def update(self, alpha=0.001):
         """
         Modify the wieght matrix based on gradient computations
         :param alpha: step size
         :return:
         """
         for i, grad in enumerate(self.grads):
-            self.layers[i] += alpha * grad
+            self.layers[i] -= alpha * grad
 
     def loss(self, outputs, labels):
         """
@@ -173,7 +189,7 @@ class NN():
             n = len(labels)
         except TypeError:
             return -np.log(outputs[labels])
-        results = [-np.log(0.00000000000001 + outputs[labels[i], i]) for i in range(n)]
+        results = [-np.log(outputs[labels[i], i]) for i in range(n)]
         return sum(results) / n
 
     def accuracy(self, outputs, labels):
@@ -198,6 +214,8 @@ class NN():
             batch_size = self.batch_size
         x, y = data
         x = np.concatenate((x, np.ones(len(x))[:, np.newaxis]), axis=1)
+
+        epoch_error = []
         # now x is 785 long
         for epoch in range(epoch):  # loop over the dataset multiple times
             assert len(x) == len(y)
@@ -209,20 +227,29 @@ class NN():
                 inputs, labels = x[i:i + batch_size].T, y[i:i + batch_size].T
 
                 # forward + backward + optimize
-                try :
-                    outputs = self.forward(inputs)
-                except ValueError:
-                    self.cache = []
-                    continue
+                outputs = self.forward(inputs)
+
+                # Debugging bloc
+                # try:
+                #     outputs = self.forward(inputs)
+                # except ValueError:
+                #     self.cache = []
+                #     continue
                 # if np.isnan(outputs).any():
                 #     print(inputs)
                 #     raise ValueError('failed at {} element, epoch no {}'.format(i, epoch))
+
                 loss = self.loss(outputs, labels) * batch_size
                 self.backwards(inputs, outputs, labels)
                 self.update()
                 running_loss += loss
                 if not i % 500:
-                    print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / (i + 1)))
+                    pass
+                    # print(self.layers[0])
+                    print('[%d, %5d] loss: %.3f    norm_W1 = %.2f' % (
+                        epoch + 1, i + 1, running_loss / (i + 1), np.linalg.norm(self.layers[0])))
+            epoch_error.append(running_loss / n)
+        return epoch_error
 
     def test(self, data):
         batch_size = self.batch_size
@@ -246,7 +273,7 @@ class NN():
 
 if __name__ == '__main__':
     pass
-    net = NN(init_method=2)
+    # net = NN(init_method=2)
 
     # test_in = np.randn(785, 1)
     # out = net.forward(test_in)
@@ -259,13 +286,31 @@ if __name__ == '__main__':
     # np.save(open('data/mnist3' + '.npy', 'wb'), (train_set, valid_set, test_set))
     train_set, valid_set, test_set = np.load('data/mnist3.npy')
 
-    start_time = time.time()
-    net.train(train_set, batch_size=32)
-
-    elapsed_time = time.time() - start_time
-    print('CPU time = ', elapsed_time)
-
-    acc = net.test(valid_set)
-    print(acc)
+    # start_time = time.time()
+    # net.train(train_set, batch_size=32)
+    #
+    # elapsed_time = time.time() - start_time
+    # print('CPU time = ', elapsed_time)
+    #
+    # acc = net.test(valid_set)
+    # print(acc)
     # 40s for 10 000 pass without vectorisation
     # 4s with batch size = 16 for the same number also better results
+
+    x = range(1, 11)
+
+    net = NN(init_method=2, lambd=3)
+    glorot = net.train(train_set, batch_size=32)
+
+    net = NN(init_method=1, lambd=0.001)
+    normal = net.train(train_set, batch_size=32)
+
+    # net = NN(init_method=0)
+    # zero = net.train(train_set, batch_size=32)
+    zero = [2.303 for i in x]
+
+    plt.plot(x, zero, label='Zero')
+    plt.plot(x, normal, label='Normal')
+    plt.plot(x, glorot, label='Glorot')
+    plt.savefig('Learning.pdf')
+    plt.show()
