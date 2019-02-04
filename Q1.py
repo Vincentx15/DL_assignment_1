@@ -1,14 +1,22 @@
 import scipy as np
 from scipy.special import logsumexp
+from scipy.special import softmax
 import time
 import matplotlib.pyplot as plt
 import random
+import numpy as npy
 
 
-def softmax(x, axis):
-    y = np.exp(x)
-    return np.divide(y, np.sum(y, axis=axis))
-    # return np.exp(x - logsumexp(x, axis=axis, keepdims=True))
+# def softmax(x, axis):
+#     y = np.exp(x)
+#     return np.divide(y, np.sum(y, axis=axis))
+#     # return np.exp(x - logsumexp(x, axis=axis, keepdims=True))
+
+
+# def softmax(x, axis):
+#     e_x = np.exp(x - npy.max(x))
+#     out = e_x / e_x.sum()
+#     return out
 
 
 class NN:
@@ -48,7 +56,7 @@ class NN:
             if method == 0:
                 return np.zeros(shape=shape)
             elif method == 1:
-                tmp = np.randn(*shape) * 0.05
+                tmp = np.randn(*shape) * 0.1
                 tmp[:, -1] = 0
                 return tmp
             else:
@@ -84,6 +92,7 @@ class NN:
 
             if np.isnan(out).any():
                 # print(out)
+                print(i)
                 raise ValueError('a', i)
 
             # The cache contains the preactivations except the input and the last one (that is fed
@@ -153,7 +162,6 @@ class NN:
 
             # Add regularisation
             self.grads[self.n_grad - i - 1][:, :-1] += lambd * self.layers[self.n_grad - i - 1][:, :-1]
-            #  TODO alpha, lambd, break in train
 
             # To check that the gradient evolve correctly, monitor their evolution in the n_grad - l layer over passes
             # l = 0
@@ -286,7 +294,12 @@ class NN:
             running_loss += loss
         return running_loss / n
 
-    def save(self, path):
+    def save(self, name):
+        """
+
+        :param name: name of the model, will be saved in directory : ./saved_models/
+        :return:
+        """
         params = [self.hidden_dims,
                   self.input_size,
                   self.output_size,
@@ -295,9 +308,16 @@ class NN:
                   self.batch_size,
                   self.lambd]
         layers = self.layers
+        path = 'saved_models/' + name
         np.save(path, np.array([params, layers]))
 
-    def load(self, path):
+    def load(self, name):
+        """
+
+        :param name: name of the model, will be loaded from directory : ./saved_models/
+        :return:
+        """
+        path = 'saved_models/' + name
         params, layers = np.load(path)
         [self.hidden_dims,
          self.input_size,
@@ -363,6 +383,9 @@ if __name__ == '__main__':
     # 40s for 10 000 pass without vectorisation
     # 4s with batch size = 16 for the same number also better results
 
+    net = NN(init_method=1, lambd=0.1)
+    normal = net.train(train_set, batch_size=16)
+
     '''
     # Initialization
 
@@ -414,11 +437,11 @@ if __name__ == '__main__':
     # x = np.concatenate((x, np.ones(len(x))[:, np.newaxis]), axis=1)
     # k = random.randint(0, 150)
     # input, label = x[k][:, np.newaxis], y[k]
-    np.random.seed(5)
-    input = np.randn(785, 1)
-    input[-1] += 1
-    label = 3
-    net = NN(save_path='glorot.npy')
-    estimated, experimental = net.validate_gradient(input, label, epsilon=0.01)
-    print('estimated', estimated)
-    print('experimental', experimental)
+    # np.random.seed(5)
+    # input = np.randn(785, 1)
+    # input[-1] += 1
+    # label = 3
+    # net = NN(save_path='glorot.npy')
+    # estimated, experimental = net.validate_gradient(input, label, epsilon=0.01)
+    # print('estimated', estimated)
+    # print('experimental', experimental)
