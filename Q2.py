@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import torchvision
 from torch.utils.data.sampler import SubsetRandomSampler
-from torch.autograd import Variable
 import time
 
 # Get Data and DataLoader
