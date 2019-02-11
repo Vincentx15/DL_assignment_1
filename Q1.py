@@ -358,6 +358,37 @@ class NN:
         return estimated, experimental_grad
 
 
+def random_search(name, duration, epoch, hidden_layer_range=range(20, 701), non_linearity_range=['relu'],
+                  batch_size_range=[4, 8, 16, 32], lambd_range=[0.005, 0.01, 0.05, 0.1]):
+
+    t0, t = time.time(), time.time()
+
+    train_set, valid_set, test_set = np.load('data/mnist3.npy')
+    best_error = -1
+    cmpt = 1
+
+    while t-t0 < duration:
+        print("Trial number {}".format(cmpt))
+
+        hidden_layer = tuple(random.sample(hidden_layer_range, 2).sort(reverse=True))
+        non_linearity = random.choice(non_linearity_range)
+        batch_size = random.choice(batch_size_range)
+        lambd = random.choice(lambd_range)
+
+        random_net = NN(init_method=2, hidden_dims=hidden_layer, non_linearity=non_linearity, batch_size=batch_size,
+                        lambd=lambd)
+
+        error = random_net.train(train_set, batch_size=16, epoch=epoch)
+
+        if (best_error == -1) or (error[-1] < best_error):
+            random_net.save(name)
+            best_error = error[-1]
+            print("Best model: hidden layers {}; non linearity {}; batch size {}; lambda {}".format(hidden_layer, non_linearity, batch_size, lambd))
+
+        t = time.time()
+        cmpt += 1
+
+
 if __name__ == '__main__':
     pass
     # net = NN(init_method=2)
