@@ -20,8 +20,10 @@ import numpy as npy
 
 
 class NN:
+
     def __init__(self, hidden_dims=(700, 300), input_size=784, output_size=10, init_method=0,
                  non_linearity='relu', batch_size=16, lambd=0.01, save_path=None):
+
         if save_path is not None:
             self.load(save_path)
             self.non_linearity = 'relu'
@@ -73,10 +75,10 @@ class NN:
             layers.append(layer)
         return layers
 
-    def activation(self, input, method):
+    def activation(self, x, method):
         if method == 'relu':
-            input[input < 0] = 0
-            return input
+            x[x < 0] = 0
+            return x
         else:
             raise ValueError('Wrong method for activation')
 
@@ -86,7 +88,7 @@ class NN:
         :return:
         """
 
-        # input is the 'h', out is the 'a' preactivations
+        # input is the 'h', out is the 'a' pre-activations
         for i, layer in enumerate(self.layers):
             out = np.dot(layer, input)
 

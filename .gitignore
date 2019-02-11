@@ -1,3 +1,9 @@
 data/
 *.idea
 buffer.py
+
+__pycache__
+.ipynb_checkpoints/
+
+.autoenv_leave.zsh
+.autoenv.zsh

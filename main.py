@@ -14,9 +14,7 @@ mnist_test = torchvision.datasets.MNIST(root='./data', train=False, transform=mn
 
 batch_size = 64
 
-device = None
-if torch.cuda.is_available():
-    device = torch.device("cuda:0")
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Create indices and sampler
 validation_split = .2
