@@ -28,9 +28,9 @@ src --|
   
     predict.py : Script for generating predictions for submission in correct format
   
-utils --|
+    utils --|
   
-    model_utils.py : Keep functions useful for training and testing
+        model_utils.py : Keep functions useful for training and testing
   
-    visualization.py : Keep functions for generating useful figures
+        visualization.py : Keep functions for generating useful figures
   
