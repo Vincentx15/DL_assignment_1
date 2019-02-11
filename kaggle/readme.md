@@ -2,11 +2,14 @@ The directory structure for the Kaggle project goes as follows:
 
 data --|
 
-  trainset --| Contains training images for cats and dogs. True images should be kept locally and not pushed to remote.
+    trainset --| Contains training images for cats and dogs. True images should be kept locally and not pushed to remote.
   
-     Cat --|
-     
-     Dog--|
+        Cat --|
+        Dog--|
+        
+    testset --| 
+    
+        test--| Contains test set images.
      
 logs --| Store training logs. Useful for storing model parameters and training data.
 
