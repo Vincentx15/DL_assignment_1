@@ -3,3 +3,10 @@ kaggle/data/trainset/Dog/*.jpg
 kaggle/data/testset/test/*.jpg
 *.idea
 buffer.py
+
+.autoenv_leave.zsh
+.autoenv.zsh
+
+.DS_Store
+
+.ipynb_checkpoints
