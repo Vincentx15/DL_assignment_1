@@ -1,22 +1,9 @@
 import scipy as np
-from scipy.special import logsumexp
 from scipy.special import softmax
 import time
 import matplotlib.pyplot as plt
 import random
 import numpy as npy
-
-
-# def softmax(x, axis):
-#     y = np.exp(x)
-#     return np.divide(y, np.sum(y, axis=axis))
-#     # return np.exp(x - logsumexp(x, axis=axis, keepdims=True))
-
-
-# def softmax(x, axis):
-#     e_x = np.exp(x - npy.max(x))
-#     out = e_x / e_x.sum()
-#     return out
 
 
 class NN:
@@ -149,7 +136,11 @@ class NN:
             # compute activation again and also d(h(a))/d(a) (useful for propagation of delta)
             h = np.concatenate((self.activation(a, self.non_linearity), np.ones((1, a.shape[1]))), axis=0)
             # h = h[:, np.newaxis]
-            dh = np.sign(a) / 2 + 0.5
+
+            # CAREFUL Scipy doc says sign returns -1, 1 but mine returns 0,1 ... WTF
+            # dh = np.sign(a) / 2 + 0.5
+            dh = np.sign(a)
+            # print('a : ', np.sign(a))
 
             # sign sometimes don't add dimension sometimes yes
             try:
@@ -161,7 +152,8 @@ class NN:
             self.grads[self.n_grad - i - 1] = np.dot(delta, h.T)
 
             # Add regularisation
-            self.grads[self.n_grad - i - 1][:, :-1] += lambd * self.layers[self.n_grad - i - 1][:, :-1]
+            if lambd:
+                self.grads[self.n_grad - i - 1][:, :-1] += lambd * self.layers[self.n_grad - i - 1][:, :-1]
 
             # To check that the gradient evolve correctly, monitor their evolution in the n_grad - l layer over passes
             # l = 0
@@ -175,11 +167,13 @@ class NN:
 
             # propagate delta to the previous layer
             temp = np.dot(delta.T, self.layers[self.n_grad - i - 1]).T[:-1, :]
+
+            # print('temp', temp[:3], temp.shape)
+            # print('dh', dh[:3], dh.shape)
+
             delta = np.multiply(temp, dh)
 
-            # print('temp',temp, temp.shape)
-            # print('dh',dh, dh.shape)
-            # print('delta',delta, delta.shape)
+            # print('delta', delta[:3], delta.shape)
         self.cache = []
 
         # do computation for the input (no activation)
@@ -193,7 +187,7 @@ class NN:
 
     def update(self, alpha=0.01):
         """
-        Modify the wieght matrix based on gradient computations
+        Modify the weight matrix based on gradient computations
         :param alpha: step size
         :return:
         """
@@ -203,7 +197,7 @@ class NN:
     def loss(self, outputs, labels):
         """
         :param output: an array outputed by softmax
-        :param labels: as a float
+        :param labels: as a float or as a batch-size list of floats
         :return: average loss
         """
         # easy to compute with this label representation, just compute the log of the proba associated with the 1
@@ -331,31 +325,30 @@ class NN:
         self.n_grad = len(self.layers)
 
     def validate_gradient(self, input, label, p=10, epsilon=0.01):
+        layer_checked = 2
         output = self.forward(input)
         self.backwards(input, output, label, lambd=0)
-        estimated = self.grads[0][0, :p]
+        estimated = self.grads[layer_checked][0, :p]
 
         # experimental one
         experimental_grad = []
-
         # print(self.layers[0])
         for i in range(p):
-            self.layers[0][0, i] += epsilon
-            # print('middle', self.layers[0])
-            # TODO : The weights in the network are way to small for the kind of epsilon we are using...
-            # This pixel is probably not so important
+            self.layers[layer_checked][0, i] += epsilon
             out1 = self.forward(input)
             loss1 = self.loss(out1, label)
-            self.layers[0][0, i] -= 2 * epsilon
+            self.layers[layer_checked][0, i] -= 2 * epsilon
             out2 = self.forward(input)
             loss2 = self.loss(out2, label)
-            self.layers[0][0, i] += epsilon
+            self.layers[layer_checked][0, i] += epsilon
 
             exp_grad_i = float(loss1 - loss2) / (2 * epsilon)
             experimental_grad.append(exp_grad_i)
+        self.cache = []
+        # Check that the layers have not been modified by this procedure
         # print(self.layers[0])
 
-        return estimated, experimental_grad
+        return estimated, np.array(experimental_grad)
 
 
 def random_search(name, duration, epoch, hidden_layer_range=range(20, 701), non_linearity_range=['relu'],
@@ -391,31 +384,30 @@ def random_search(name, duration, epoch, hidden_layer_range=range(20, 701), non_
 
 if __name__ == '__main__':
     pass
-    # net = NN(init_method=2)
 
+    # Test the NN
+    # net = NN(init_method=2)
     # test_in = np.randn(785, 1)
     # out = net.forward(test_in)
     # # print(out, type(out))
-    # pred = out
     # label = np.zeros((10, 1))
     # label[4] = 1
-    # net.backwards(test_in, pred, label)
+    # net.backwards(test_in, out, label)
 
-    # np.save(open('data/mnist3' + '.npy', 'wb'), (train_set, valid_set, test_set))
+    # Load Data
     train_set, valid_set, test_set = np.load('data/mnist3.npy')
 
+    # Test the training procedure
     # start_time = time.time()
     # net.train(train_set, batch_size=32)
     # elapsed_time = time.time() - start_time
     # print('CPU time = ', elapsed_time)
-    #
+
+    # Test the training procedure
     # acc = net.test(valid_set)
     # print(acc)
     # 40s for 10 000 pass without vectorisation
     # 4s with batch size = 16 for the same number also better results
-
-    net = NN(init_method=1, lambd=0.1)
-    normal = net.train(train_set, batch_size=16)
 
     '''
     # Initialization
@@ -425,7 +417,7 @@ if __name__ == '__main__':
     net.save(path='normal.npy')
     # Final loss : 0.153
 
-    
+
     net = NN(init_method=2, lambd=0.1)
     glorot = net.train(train_set, batch_size=16)
     net.save(path='glorot.npy')
@@ -468,11 +460,28 @@ if __name__ == '__main__':
     # x = np.concatenate((x, np.ones(len(x))[:, np.newaxis]), axis=1)
     # k = random.randint(0, 150)
     # input, label = x[k][:, np.newaxis], y[k]
-    # np.random.seed(5)
-    # input = np.randn(785, 1)
-    # input[-1] += 1
-    # label = 3
-    # net = NN(save_path='glorot.npy')
-    # estimated, experimental = net.validate_gradient(input, label, epsilon=0.01)
-    # print('estimated', estimated)
-    # print('experimental', experimental)
+    net = NN(save_path='glorot.npy')
+
+    np.random.seed(8)
+    input = np.randn(785, 1)
+    input[-1] = 1
+    label = 3
+    # estimated, experimental = net.validate_gradient(input, label, epsilon=0.1, p=6)
+    # print(estimated, experimental)
+
+    ks = range(1, 6)
+    i_range = range(6)
+    eps_range = [1 / (k * 10 ** i) for k in ks for i in i_range]
+    eps_range = list(reversed(sorted(eps_range)))
+    log_eps = np.log(eps_range)
+    res = []
+
+    for eps in eps_range:
+        estimated, experimental = net.validate_gradient(input, label, epsilon=eps, p=6)
+        res.append(np.linalg.norm(experimental - estimated))
+    plt.plot(log_eps, res)
+    plt.xlabel('Log(epsilon)')
+    plt.ylabel('Mean distance')
+    plt.legend()
+    plt.savefig('Finite_difference_validation.pdf')
+    plt.show()
