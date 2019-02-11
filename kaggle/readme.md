@@ -15,22 +15,22 @@ models --| Store trained models.
 notebooks --| Keep all notebooks here. All useful sections should be refactored into scripts. 
 
 src --|
-
-  data_processing --| Store scripts useful for generating and processing data
-  
-     dataset.py Keep dataset here
      
-  models --|
+    data_processing --| Store scripts useful for generating and processing data
   
-    models.py : keep classification models here
+       dataset.py Keep dataset here
+     
+    models --|
+  
+      models.py : keep classification models here
     
-  train_model.py : Script for training
+    train_model.py : Script for training
   
-  predict.py : Script for generating predictions for submission in correct format
+    predict.py : Script for generating predictions for submission in correct format
   
 utils --|
-
-  model_utils.py : Keep functions useful for training and testing
   
-  visualization.py : Keep functions for generating useful figures
+    model_utils.py : Keep functions useful for training and testing
+  
+    visualization.py : Keep functions for generating useful figures
   
