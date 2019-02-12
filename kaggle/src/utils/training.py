@@ -78,9 +78,10 @@ def train_model(model, criterion, optimizer, scheduler, device, dataloaders,
 
                     # Forward
                     outputs = model(data)
-                    _, predictions = outputs.max(1)
+                    predictions = outputs.argmax(1)
 
                     # Computing the loss, according to the criterion
+
                     loss = criterion(outputs, labels)
 
                     # Backward + optimize only if in training phase

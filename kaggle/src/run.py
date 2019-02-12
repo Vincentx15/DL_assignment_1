@@ -4,7 +4,7 @@ from torch.utils.data import Subset, DataLoader
 import torch.optim as optim
 import torch
 
-from models import baseline, cnn, resnet
+from models import baseline, cnn, meganet
 
 from utils import training
 
@@ -31,8 +31,8 @@ def run_experiment(name, model, root_dir='', split=.9, size=64, random=True, see
         'log_interval': log_interval
     }
 
-    result_folder = root_dir + 'results/' + name + '/'
-    result_log = result_folder + 'logs.json'
+    result_folder = os.path.join(root_dir, 'results', name)
+    result_log = os.path.join(result_folder, 'logs.json')
 
     try:
         os.mkdir(result_folder)
@@ -62,12 +62,15 @@ def run_experiment(name, model, root_dir='', split=.9, size=64, random=True, see
 
     transform = transforms.Compose([
         # transforms.Grayscale(),
-        transforms.RandomCrop(size),
-        transforms.ToTensor()
+        # transforms.RandomCrop(size),
+        transforms.Resize(size),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=(0.4897, 0.4547, 0.4160),
+                             std=(0.25206208, 0.24510874, 0.24726304))
     ])
 
     dataset = KaggleDataset(
-        data_dir='data/trainset/',
+        data_dir='../data/trainset/',
         transform=transform
     )
 
@@ -153,9 +156,11 @@ if __name__ == '__main__':
     networks = {
         'baseline': baseline.Baseline,
         'cnn': cnn.Network,
-        'resnet-3-128': resnet.ResNet(num_blocks=3, channels=128)
+        'meganet': meganet.MegaNet
     }
 
     net = networks[m](size)
+
+    del config['model']
 
     run_experiment(model=net, **config)
