@@ -3,18 +3,33 @@ from scipy.special import softmax
 import time
 import matplotlib.pyplot as plt
 import random
-import numpy as npy
+import copy
 
 
 class NN:
-    def __init__(self, hidden_dims=(700, 300), input_size=784, output_size=10, init_method=0,
+
+    def __init__(self, alpha=0.01, hidden_dims=(700, 300), input_size=784, output_size=10, init_method=0,
                  non_linearity='relu', batch_size=16, lambd=0.01, save_path=None):
+        """
+        Initializes the NN
+        :param alpha: learning rate
+        :param hidden_dims: dimensions of hidden layers
+        :param input_size: size of input
+        :param output_size: size of output
+        :param init_method: 0, 1, 2 depending on the initialization method
+        :param non_linearity: non linearity of the hidden layers
+        :param batch_size: size of the batches for the training
+        :param lambd: lambda, regularization parameter
+        :param save_path: path for saving the NN
+        """
+
         if save_path is not None:
             self.load(save_path)
             self.non_linearity = 'relu'
             self.grads = list(range(self.n_grad))
             return
 
+        self.alpha = alpha
         self.hidden_dims = hidden_dims
         self.input_size = input_size
         self.output_size = output_size
@@ -28,6 +43,7 @@ class NN:
         self.grads = list(range(self.n_grad))
 
     def initialise_weights(self):
+
         def create_shape(shape, method=None):
             """
             Auxiliary function to build the layer matrices
@@ -61,14 +77,43 @@ class NN:
         return layers
 
     def activation(self, input, method):
+        """
+        Return the activated input
+        :param input: input of the activation
+        :param method: method of activation
+        :return:
+        """
         if method == 'relu':
+            input = np.copy(input)
             input[input < 0] = 0
             return input
+        if method == 'sigmoid':
+            return 1/(1+np.exp(-np.asarray(input)))
+        if method == 'tanh':
+            return np.tanh(input)
+        else:
+            raise ValueError('Wrong method for activation')
+
+    def activation_derivative(self, input, method):
+        """
+        Return the derivative of the activation at the input
+        :param input: input of the activation
+        :param method: method of activation
+        :return:
+        """
+        if method == 'relu':
+            return np.sign(input) / 2 + 0.5
+        if method == 'sigmoid':
+            s = 1/(1+np.exp(-np.asarray(input)))
+            return s*(1-s)
+        if method == 'tanh':
+            return 1-np.tanh(input)**2
         else:
             raise ValueError('Wrong method for activation')
 
     def forward(self, input):
         """
+        Propagate a forward pass
         :param input: should be padded
         :return:
         """
@@ -137,9 +182,11 @@ class NN:
             h = np.concatenate((self.activation(a, self.non_linearity), np.ones((1, a.shape[1]))), axis=0)
             # h = h[:, np.newaxis]
 
-            # CAREFUL Scipy doc says sign returns -1, 1 but mine returns 0,1 ... WTF
+            print(np.shape(a))
+            dh = self.activation_derivative(a, self.non_linearity)
             # dh = np.sign(a) / 2 + 0.5
-            dh = np.sign(a)
+            print(np.shape(dh))
+
             # print('a : ', np.sign(a))
 
             # sign sometimes don't add dimension sometimes yes
@@ -149,10 +196,14 @@ class NN:
                 dh = dh[:, np.newaxis]
 
             # compute grads
+            print(np.shape(delta))
+            print(np.shape(h))
             self.grads[self.n_grad - i - 1] = np.dot(delta, h.T)
 
             # Add regularisation
             if lambd:
+                print(lambd)
+                print(self.layers[self.n_grad - i - 1][:, :-1])
                 self.grads[self.n_grad - i - 1][:, :-1] += lambd * self.layers[self.n_grad - i - 1][:, :-1]
 
             # To check that the gradient evolve correctly, monitor their evolution in the n_grad - l layer over passes
@@ -185,14 +236,15 @@ class NN:
         self.grads[0][:, :-1] += lambd * self.layers[0][:, :-1]
         return
 
-    def update(self, alpha=0.01):
+
+    def update(self):
         """
         Modify the weight matrix based on gradient computations
         :param alpha: step size
         :return:
         """
         for i, grad in enumerate(self.grads):
-            self.layers[i] -= alpha * grad
+            self.layers[i] -= self.alpha * grad
 
     def loss(self, outputs, labels):
         """
@@ -210,30 +262,16 @@ class NN:
         results = [-np.log(outputs[labels[i], i]) for i in range(n)]
         return sum(results) / n
 
-    def accuracy(self, outputs, labels):
-        """
-        :param output: an array outputed by softmax
-        :param labels: as a float
-        :return: average loss
-        """
-        try:
-            n = len(labels)
-        except TypeError:
-            return np.argmax == outputs[labels]
-        results = np.argmax(outputs, axis=0) == labels
-        # print(labels)
-        # print(np.argmax(outputs, axis=0))
-        # print(results)
-        # print(sum(results) / n)
-        return sum(results) / n
-
-    def train(self, data, batch_size=None, epoch=10):
+    def train(self, train_set, batch_size=None, epoch=10, valid_set=None):
         if batch_size is None:
             batch_size = self.batch_size
-        x, y = data
+
+        x, y = train_set
         x = np.concatenate((x, np.ones(len(x))[:, np.newaxis]), axis=1)
 
-        epoch_error = []
+        best_model = copy.deepcopy(self)
+        epoch_accuracy = [self.test(valid_set)]
+
         # now x is 785 long
         for epoch in range(epoch):  # loop over the dataset multiple times
             assert len(x) == len(y)
@@ -266,8 +304,31 @@ class NN:
                     # print(self.layers[0])
                     print('[%d, %5d] loss: %.3f    norm_W1 = %.2f' % (
                         epoch + 1, i + 1, running_loss / (i + 1), np.linalg.norm(self.layers[0])))
-            epoch_error.append(running_loss / n)
-        return epoch_error
+
+            if max(epoch_accuracy) < self.test(valid_set):
+                best_model = copy.deepcopy(self)
+            epoch_accuracy.append(self.test(valid_set))
+            print("Loss {}; accuracy {}".format(running_loss / n, self.test(valid_set)))
+
+        return epoch_accuracy, best_model
+
+
+    def accuracy(self, outputs, labels):
+        """
+        :param output: an array outputed by softmax
+        :param labels: as a float
+        :return: average loss
+        """
+        try:
+            n = len(labels)
+        except TypeError:
+            return np.argmax == outputs[labels]
+        results = np.argmax(outputs, axis=0) == labels
+        # print(labels)
+        # print(np.argmax(outputs, axis=0))
+        # print(results)
+        # print(sum(results) / n)
+        return sum(results) / n
 
     def test(self, data):
         batch_size = self.batch_size
@@ -351,32 +412,37 @@ class NN:
         return estimated, np.array(experimental_grad)
 
 
-def random_search(name, duration, epoch, hidden_layer_range=range(20, 701), non_linearity_range=['relu'],
-                  batch_size_range=[4, 8, 16, 32], lambd_range=[0.005, 0.01, 0.05, 0.1]):
-
+def random_search(name, duration, epoch, alpha_range=[0.001, 0.005, 0.01, 0.05, 0.1], hidden_layer_range=range(20, 701),
+                  non_linearity_range=['relu'], batch_size_range=[4, 8, 16, 32, 64],
+                  lambd_range=[0.005, 0.01, 0.05, 0.1]):
     t0, t = time.time(), time.time()
 
     train_set, valid_set, test_set = np.load('data/mnist3.npy')
-    best_error = -1
+    best_accuracy = -1
     cmpt = 1
 
-    while t-t0 < duration:
+    while t - t0 < duration:
         print("Trial number {}".format(cmpt))
 
-        hidden_layer = tuple(random.sample(hidden_layer_range, 2).sort(reverse=True))
+        alpha = random.choice(alpha_range)
+        hidden_layer = random.sample(hidden_layer_range, 2)
+        hidden_layer.sort(reverse=True)
+        hidden_layer = tuple(hidden_layer)
         non_linearity = random.choice(non_linearity_range)
         batch_size = random.choice(batch_size_range)
         lambd = random.choice(lambd_range)
 
-        random_net = NN(init_method=2, hidden_dims=hidden_layer, non_linearity=non_linearity, batch_size=batch_size,
-                        lambd=lambd)
+        random_net = NN(init_method=2, alpha=alpha, hidden_dims=hidden_layer, non_linearity=non_linearity,
+                        batch_size=batch_size, lambd=lambd)
 
-        error = random_net.train(train_set, batch_size=16, epoch=epoch)
+        accuracy, best_model = random_net.train(train_set=train_set, valid_set=valid_set, batch_size=batch_size, epoch=epoch)
 
-        if (best_error == -1) or (error[-1] < best_error):
-            random_net.save(name)
-            best_error = error[-1]
-            print("Best model: hidden layers {}; non linearity {}; batch size {}; lambda {}".format(hidden_layer, non_linearity, batch_size, lambd))
+        if (best_accuracy == -1) or (max(accuracy) > best_accuracy):
+            best_model.save(name)
+            best_accuracy = max(accuracy)
+            print("Best model: hidden layers {}; non linearity {}; batch size {}; lambda {}; alpha {}".format(hidden_layer,
+                                                                                                    non_linearity,
+                                                                                                    batch_size, lambd, alpha))
 
         t = time.time()
         cmpt += 1
@@ -446,20 +512,21 @@ if __name__ == '__main__':
     plt.show()
     '''
 
-    '''
+
     # test saving module
     net = NN(init_method=2, lambd=0.3)
-    net.train(train_set, batch_size=32)
-    net.save(save_path='test.npy')
-    net = NN(save_path='test.npy')
-    print(net.layers)
-    net.train(train_set)
-    '''
+    net.train(train_set, batch_size=32, valid_set=valid_set)
+    # net.save(save_path='test.npy')
+    # net = NN(save_path='test.npy')
+    # print(net.layers)
+    # net.train(train_set)
+
 
     # x, y = train_set
     # x = np.concatenate((x, np.ones(len(x))[:, np.newaxis]), axis=1)
     # k = random.randint(0, 150)
     # input, label = x[k][:, np.newaxis], y[k]
+    """
     net = NN(save_path='glorot.npy')
 
     np.random.seed(8)
@@ -485,3 +552,5 @@ if __name__ == '__main__':
     plt.legend()
     plt.savefig('Finite_difference_validation.pdf')
     plt.show()
+    """
+    # random_search(name='random_search.npy', duration=40*60, epoch=10)
