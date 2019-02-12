@@ -32,8 +32,8 @@ test_loader = torch.utils.data.DataLoader(mnist_test, batch_size=batch_size)
 # Tune Net
 def train():
     net = ToyConvNet()
-    if device:
-        net = net.cuda()
+    net = net.to(device)
+
     optimizer = torch.optim.Adam(net.parameters(), lr=1e-4)
     criterion = nn.CrossEntropyLoss()
 
@@ -41,8 +41,7 @@ def train():
 
         running_loss = 0.0
         for i, (inputs, labels) in enumerate(train_loader):
-            if device:
-                inputs, labels = inputs.cuda(), labels.cuda()
+            inputs, labels = inputs.to(device), labels.to(device)
 
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -64,8 +63,7 @@ def train():
         total = 0
         correct = 0
         for i, (inputs, labels) in enumerate(validation_loader):
-            if device:
-                inputs, labels = inputs.cuda(), labels.cuda()
+            inputs, labels = inputs.to(device), labels.to(device)
             outputs = net(inputs)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
