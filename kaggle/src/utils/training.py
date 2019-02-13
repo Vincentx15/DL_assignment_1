@@ -95,6 +95,11 @@ def train_model(model, criterion, optimizer, scheduler, device, dataloaders,
                 running_corrects += int(torch.sum(predictions == labels))
 
                 if writer is not None and i % log_interval == 0 and i != 0 and phase == 'train':
+                    total_norm = 0
+                    for p in model.parameters():
+                        param_norm = p.grad.data.norm(2)
+                        total_norm += param_norm.item() ** 2
+                    total_norm = total_norm ** (1. / 2)
 
                     time_elapsed = time.time() - since
                     writer({
@@ -102,6 +107,7 @@ def train_model(model, criterion, optimizer, scheduler, device, dataloaders,
                         'phase': phase,
                         'loss': round(running_loss / running_nb, 4),
                         'accuracy': round(running_corrects / running_nb, 4),
+                        'gradient-norm': round(total_norm, 4),
                         'time': round(time_elapsed / 60, 2)
                     })
 
