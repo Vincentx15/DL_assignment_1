@@ -4,7 +4,7 @@ from torch.utils.data import Subset, DataLoader
 import torch.optim as optim
 import torch
 
-from models import baseline, cnn, meganet
+from models import baseline, cnn, meganet, final_model
 
 from utils import training
 
@@ -61,9 +61,8 @@ def run_experiment(name, model, root_dir='', split=.9, size=64, random=True, see
     ############################################
 
     transform = transforms.Compose([
-        # transforms.Grayscale(),
-        # transforms.RandomCrop(size),
-        transforms.Resize(size),
+        transforms.RandomCrop(size),
+        transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(mean=(0.4897, 0.4547, 0.4160),
                              std=(0.25206208, 0.24510874, 0.24726304))
@@ -156,7 +155,8 @@ if __name__ == '__main__':
     networks = {
         'baseline': baseline.Baseline,
         'cnn': cnn.Network,
-        'meganet': meganet.MegaNet
+        'meganet': meganet.MegaNet,
+        'final': final_model.FinalNet
     }
 
     net = networks[m](size)

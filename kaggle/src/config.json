@@ -1,6 +1,6 @@
 {
-  "name": "cropped-cnn-2h",
-  "model": "resnet-3-128",
+  "name": "testrun",
+  "model": "baseline",
   "split": 0.9,
   "size": 60,
   "random": "true",
