@@ -1,34 +1,50 @@
 from torchvision import transforms
-from torchvision.datasets import ImageFolder
+from utils.dataset import KaggleDataset
 from torch.utils.data import DataLoader
 import torch
 import argparse
 from models import baseline
+import pandas as pd
 
 
 def make_predictions(data_dir, out_dir, model_path):
 
+    mapping = {0: 'Cat', 1: 'Dog'}
+
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     transform = transforms.Compose([
-        transforms.RandomCrop(64),
+        transforms.RandomCrop(60),
         transforms.ToTensor(),
-        transforms.Normalize(mean=(0.4897, 0.4547, 0.4160),
-                             std=(0.25206208, 0.24510874, 0.24726304))
+        transforms.Normalize(mean=(0.4928977, 0.45769846, 0.4182541),
+                             std=(0.25360096, 0.24709238, 0.24873821))
     ])
 
     model = torch.load(model_path, map_location=device)
     model.eval()
-    dataset = ImageFolder(root='../data/testset',
-                          transform=transform)
+    dataset = KaggleDataset(data_dir='../data/testset/',
+                            transform=transform)
 
     predictions = []
+    ids = []
     test_loader = DataLoader(dataset,
                              batch_size=128)
 
-    for inputs, _ in test_loader:
+    for sample in test_loader:
+
+        inputs, id = sample['image'], sample['id']
+        # Move to device
+        inputs = inputs.to(device)
         predictions.append(model(inputs.to(device)).argmax(dim=1))
-        print(predictions)
-        break
+        ids.append(id)
+
+    predictions = torch.cat(predictions).cpu().numpy()
+    ids = torch.cat(ids).cpu().numpy()
+
+    results = pd.DataFrame(data={'id': ids, 'label': [mapping[p]
+                                                      for p in predictions]}
+                           )
+    results.index.name = 'id'
+    results.to_csv(out_dir+'results.csv', index=False)
 
 
 if __name__ == "__main__":
@@ -36,6 +52,6 @@ if __name__ == "__main__":
     parser.add_argument('--data_dir', default='../data/testset')
     parser.add_argument('--out_dir', default='Submissions/')
     parser.add_argument(
-        '--model_path', default='results/base_wr_lr01_wflipbest_model.pth')
+        '--model_path', default='results/base_wr_lr01best_model.pth')
     args = parser.parse_args()
     make_predictions(args.data_dir, args.out_dir, args.model_path)
