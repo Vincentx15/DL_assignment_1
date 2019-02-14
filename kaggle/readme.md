@@ -1,39 +1,12 @@
-The directory structure for the Kaggle project goes as follows:
+# Cats and Dogs Kaggle
 
-data --|
+## Directory structure
 
-    trainset --| Contains training images for cats and dogs. True images should be kept locally and not pushed to remote.
-  
-        Cat --|
-        Dog--|
-        
-    testset --| 
-    
-        test--| Contains test set images.
-     
-logs --| Store training logs. Useful for storing model parameters and training data.
+We separated the source code from the rest of the material (such as the dataset or results from experiment).
 
-models --| Store trained models.
+The source code, that explains how to run the code, can be found in the [`src/` folder](src/).
 
-notebooks --| Keep all notebooks here. All useful sections should be refactored into scripts. 
+In order to run an experiment properly, you will need to add the dataset in the `data/` directory. During training, the code will dump logs into the `logs/` directory, and will create a experiment folder in the `results/` directory, in which the best model from the experiment will be saved.
 
-src --|
-     
-    data_processing --| Store scripts useful for generating and processing data
-  
-       dataset.py Keep dataset here
-     
-    models --|
-  
-      models.py : keep classification models here
-    
-    train_model.py : Script for training
-  
-    predict.py : Script for generating predictions for submission in correct format
-  
-    utils --|
-  
-        model_utils.py : Keep functions useful for training and testing
-  
-        visualization.py : Keep functions for generating useful figures
-  
+Some notebooks can be found in the `notebooks/` directory.
+
