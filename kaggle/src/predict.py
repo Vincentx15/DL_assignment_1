@@ -12,11 +12,11 @@ def make_predictions(data_dir, out_dir, model_path):
     mapping = {0: 'Cat', 1: 'Dog'}
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     transform = transforms.Compose([
         transforms.RandomCrop(60),
         transforms.ToTensor(),
-        transforms.Normalize(mean=(0.4928977, 0.45769846, 0.4182541),
-                             std=(0.25360096, 0.24709238, 0.24873821))
+        transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
     ])
 
     model = torch.load(model_path, map_location=device)

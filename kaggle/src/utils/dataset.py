@@ -35,16 +35,14 @@ class KaggleDataset(Dataset):
 
         for folder in folders:
             path = data_dir + folder
-            samples = pd.DataFrame([f for f in os.listdir(
-                path) if isfile(join(path, f))], columns=['filename'])
+            samples = pd.DataFrame([f for f in os.listdir(path) if isfile(join(path, f))], columns=['filename'])
             samples['folder'] = folder
             metadata.append(samples)
 
         self.metadata = pd.concat(metadata, axis=0)
 
         # Retrieve the id for each image (there are duplicates during training)
-        self.metadata['id'] = self.metadata['filename'].apply(
-            lambda x: int(x.split('.')[0]))
+        self.metadata['id'] = self.metadata['filename'].apply(lambda x: int(x.split('.')[0]))
 
         # Sort images depending on their id
         self.metadata.sort_values(['id'], inplace=True)
@@ -61,8 +59,7 @@ class KaggleDataset(Dataset):
 
         image_path, folder, id_image = self.metadata.loc[item]
 
-        image = Image.open(
-            join(self.data_dir, folder, image_path)).convert('RGB')
+        image = Image.open(join(self.data_dir, folder, image_path)).convert('RGB')
 
         if self.transform is not None:
             image = self.transform(image)
