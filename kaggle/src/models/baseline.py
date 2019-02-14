@@ -5,6 +5,9 @@ import torch.nn.functional as functional
 class Baseline(nn.Module):
 
     def __init__(self, size=64):
+        """
+        Define the Pytorch functions used inside the model.
+        """
 
         super(Baseline, self).__init__()
 
@@ -16,9 +19,18 @@ class Baseline(nn.Module):
         out_size = size // 2
 
         self.fc1 = nn.Linear(32 * out_size * out_size, 100)
-        self.fc2 = nn.Linear(100, 2)
+        self.classifier = nn.Linear(100, 2)
 
     def forward(self, x):
+        """
+        Performs the forward pass. Automated process by the torch.nn.Module class.
+
+        Args:
+            x: input tensor.
+
+        Returns:
+            x: output tensor.
+        """
 
         # Obtain the batch size
         n = x.size(0)
@@ -36,6 +48,6 @@ class Baseline(nn.Module):
 
         x = functional.relu(self.fc1(x))
 
-        x = self.fc2(x)
+        x = self.classifier(x)
 
         return x

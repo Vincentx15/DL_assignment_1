@@ -3,8 +3,9 @@ import torchvision.transforms as transforms
 from torch.utils.data import Subset, DataLoader
 import torch.optim as optim
 import torch
+from torch import nn
 
-from models import baseline, cnn, meganet, final_model
+from models import baseline, cnn, resnet
 
 from utils import training
 
@@ -15,15 +16,38 @@ import json
 import os
 
 
-def run_experiment(name, model, root_dir='', split=.9, size=64, random=True, seed=None, n_epochs=300,
-                   wall_time=7.5, batch_size=100, learning_rate=1e-3, log_interval=30, save=None):
+def run_experiment(name, model, root_dir='', split=.9, size=60, random=True, seed=None,
+                   torch_seed=None, n_epochs=100, wall_time=4, batch_size=10,
+                   learning_rate=1e-2, log_interval=10, save=None):
+    """
+    Runs an experiment (training a model on a pre-processed dataset).
+
+    Args:
+        name (str): name of the experiment and folder within the results directory where the results will be stored.
+        model (torch.nn.Module): model to train.
+        root_dir (str): the root directory of the project. Useful for running on a remote cluster.
+        split (float, between 0 and 1): the proportion of examples to use as training set
+        size (int, at most 64): the size of the training examples. A random crop is applied.
+        random (bool): whether to randomize the training/validation split.
+        seed (int): the seed for numpy.
+        torch_seed (int): the random seed for torch.
+        n_epochs (int): the maximum number of epochs to train on.
+        wall_time (float): the maximum number of hours to train for.
+        batch_size (int): the batch size.
+        learning_rate (float): the learning rate
+        log_interval (int): log the performance every log_interval batches
+        save (str): where to save the best performing model mid-training
+            (especially useful with an unstable compute environment)
+    """
 
     configuration = {
         'name': name,
+        'model': str(model),
         'split': split,
         'size': size,
         'random': random,
         'seed': seed,
+        'torch_seed': torch_seed,
         'n_epochs': n_epochs,
         'wall_time': wall_time,
         'batch_size': batch_size,
@@ -31,8 +55,8 @@ def run_experiment(name, model, root_dir='', split=.9, size=64, random=True, see
         'log_interval': log_interval
     }
 
-    result_folder = os.path.join(root_dir, 'results', name)
-    result_log = os.path.join(result_folder, 'logs.json')
+    result_folder = root_dir + 'results/' + name + '/'
+    result_log = root_dir + 'logs/' + name + '.json'
 
     try:
         os.mkdir(result_folder)
@@ -40,11 +64,13 @@ def run_experiment(name, model, root_dir='', split=.9, size=64, random=True, see
         pass
 
     with open(result_folder + 'config.json', 'w') as f:
-        json.dump(configuration, f)
+        json.dump(configuration, f, indent=2, separators=(',', ': '))
 
     ############################################
     #           Network architecture           #
     ############################################
+
+    torch.manual_seed(torch_seed)
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -61,11 +87,12 @@ def run_experiment(name, model, root_dir='', split=.9, size=64, random=True, see
     ############################################
 
     transform = transforms.Compose([
+        transforms.RandomRotation(5),
         transforms.RandomCrop(size),
         transforms.RandomHorizontalFlip(),
+        transforms.RandomGrayscale(),
         transforms.ToTensor(),
-        transforms.Normalize(mean=(0.4897, 0.4547, 0.4160),
-                             std=(0.25206208, 0.24510874, 0.24726304))
+        transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
     ])
 
     dataset = KaggleDataset(
@@ -121,7 +148,7 @@ def run_experiment(name, model, root_dir='', split=.9, size=64, random=True, see
 
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max')
 
     ############################################
     #              Actual Training             #
@@ -155,12 +182,11 @@ if __name__ == '__main__':
     networks = {
         'baseline': baseline.Baseline,
         'cnn': cnn.Network,
-        'meganet': meganet.MegaNet,
-        'final': final_model.FinalNet
+        'resnet': resnet.ResNet,
+        'huge-cnn': cnn.HugeNetwork
     }
 
     net = networks[m](size)
-
     del config['model']
 
-    run_experiment(model=net, **config)
+    run_experiment(model=net, root_dir='../', **config)
