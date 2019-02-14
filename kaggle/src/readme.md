@@ -1,4 +1,4 @@
-# Cats and Dogs Kaggle
+# Cats and Dogs Kaggle — Source
 
 ## Running an experiment
 

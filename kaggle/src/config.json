@@ -1,0 +1,14 @@
+{
+  "name": "cnn",
+  "model": "cnn",
+  "split": 0.9,
+  "size": 60,
+  "random": "true",
+  "seed": 1,
+  "torch_seed": 1,
+  "n_epochs": 100,
+  "wall_time": 4,
+  "batch_size": 10,
+  "learning_rate": 1e-2,
+  "log_interval": 10
+}

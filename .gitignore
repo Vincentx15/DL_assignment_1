@@ -9,3 +9,5 @@ __pycache__
 .autoenv.zsh
 /notebooks/outputs/
 /logs/
+
+!kaggle/data/
