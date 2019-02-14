@@ -266,8 +266,8 @@ class NN:
                 if not i % 500:
                     pass
                     # print(self.layers[0])
-                    print('[%d, %5d] loss: %.3f    norm_W1 = %.2f' % (
-                        epoch + 1, i + 1, running_loss / (i + 1), np.linalg.norm(self.layers[0])))
+                    print('[%d, %5d] loss: %.3f' % (
+                        epoch + 1, i + 1, running_loss / (i + 1)))
             epoch_error.append(running_loss / n)
         return epoch_error
 
@@ -411,25 +411,24 @@ if __name__ == '__main__':
     # 40s for 10 000 pass without vectorisation
     # 4s with batch size = 16 for the same number also better results
 
-    '''
+
     # Initialization
+    '''
+    # net = NN(init_method=0)
+    # zero = net.train(train_set, batch_size=32)
+    x = range(1, 11)
+    zero = [2.303 for i in x]
 
     net = NN(init_method=1, lambd=0.1)
     normal = net.train(train_set, batch_size=16)
-    net.save(path='normal.npy')
+    net.save(name='normal.npy')
     # Final loss : 0.153
 
 
     net = NN(init_method=2, lambd=0.1)
     glorot = net.train(train_set, batch_size=16)
-    net.save(path='glorot.npy')
+    net.save(name='glorot.npy')
     # Final loss : 0.164
-
-
-    # net = NN(init_method=0)
-    # zero = net.train(train_set, batch_size=32)
-    x = range(1, 11)
-    zero = [2.303 for i in x]
 
     print(glorot)
     print(normal)
@@ -444,9 +443,10 @@ if __name__ == '__main__':
     plt.xlabel('Epoch')
     plt.ylabel('Training Loss')
     plt.legend()
-    plt.savefig('Learning_fixed.pdf')
+    plt.savefig('Learning.pdf')
     plt.show()
     '''
+
 
     '''
     # test saving module
@@ -458,6 +458,9 @@ if __name__ == '__main__':
     net.train(train_set)
     '''
 
+
+    '''
+    # Gradient Validation
     # x, y = train_set
     # x = np.concatenate((x, np.ones(len(x))[:, np.newaxis]), axis=1)
     # k = random.randint(0, 150)
@@ -487,3 +490,4 @@ if __name__ == '__main__':
     plt.legend()
     plt.savefig('Finite_difference_validation.pdf')
     plt.show()
+    '''
