@@ -1,12 +1,11 @@
-kaggle/data/trainset/Cat/*.jpg
-kaggle/data/trainset/Dog/*.jpg
-kaggle/data/testset/test/*.jpg
+data/
 *.idea
 buffer.py
 
+__pycache__
+.ipynb_checkpoints/
+
 .autoenv_leave.zsh
 .autoenv.zsh
-
-.DS_Store
-
-.ipynb_checkpoints
+/notebooks/outputs/
+/logs/

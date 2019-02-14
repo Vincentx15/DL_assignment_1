@@ -16,13 +16,13 @@ class ToyConvNet(nn.Module):
             nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3, 3), padding=1),
             nn.Dropout(p=0.5),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=(2, 2), stride=2),
+            # nn.MaxPool2d(kernel_size=(2, 2), stride=2),
 
             # Layer 2
             nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 3), padding=1),
             nn.Dropout(p=0.5),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=(2, 2), stride=2),
+            # nn.MaxPool2d(kernel_size=(2, 2), stride=2),
 
             # Layer 3
             nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(3, 3), padding=1),
@@ -37,7 +37,7 @@ class ToyConvNet(nn.Module):
             nn.MaxPool2d(kernel_size=(2, 2), stride=2)
         )
         # Logistic Regression
-        self.clf = nn.Linear(128,10)
+        self.clf = nn.Linear(128 * 7 * 7, 10)
 
     def layer_resNet(self):
         nn.Sequential(
@@ -50,4 +50,13 @@ class ToyConvNet(nn.Module):
             nn.MaxPool2d(kernel_size=(2, 2), stride=2))
 
     def forward(self, x):
-        return self.clf(self.conv(x).squeeze())
+
+        n = x.size(0)
+
+        x = self.conv(x)
+
+        x = x.view(n, -1)
+
+        x = self.clf(x)
+
+        return x
