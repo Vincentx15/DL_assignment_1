@@ -7,3 +7,5 @@ __pycache__
 
 .autoenv_leave.zsh
 .autoenv.zsh
+/notebooks/outputs/
+/logs/

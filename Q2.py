@@ -48,7 +48,7 @@ def train():
     net = ToyConvNet()
     net = net.to(device)
 
-    writer = Writer('logs.json')
+    writer = Writer('logs/q2.json')
 
     optimizer = torch.optim.Adam(net.parameters(), lr=1e-4)
     criterion = nn.CrossEntropyLoss()
