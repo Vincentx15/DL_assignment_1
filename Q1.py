@@ -8,9 +8,8 @@ import copy
 
 class NN:
 
-
     def __init__(self, hidden_dims=(700, 300), input_size=784, output_size=10, init_method=2,
-                 non_linearity='relu', batch_size=16, alpha=0.01, lambd=0.3, save_path=None):
+                 non_linearity='relu', batch_size=16, alpha=0.01, lambd=0.1, save_path=None):
         """
         Initializes the NN with all its parameters
         :param hidden_dims:
@@ -47,7 +46,7 @@ class NN:
     def initialise_weights(self):
         """
         Initializes the weights of the layers in the NN
-        :return:
+        :return: initialized layers
         """
 
         def create_shape(shape, method=None):
@@ -123,7 +122,7 @@ class NN:
         :param input: should be padded, corresponds to h
         :return: preactivation a
         """
-        self.cache = []  # Re-initiliazes the cache (case we make a forward pass, filling it, when evaluating)
+        self.cache = []  # Re-initiliazes the cache (case we make a forward pass, filling it, eg when evaluating)
 
         for i, layer in enumerate(self.layers):
             out = np.dot(layer, input)
@@ -163,7 +162,6 @@ class NN:
         :param input: not padded
         :param output: a list outputed by softmax
         :param labels: as a float
-        :param cost: if different must change how delta_final is computed
         :param lambd: lambda parameter
         :return:
         """
@@ -456,77 +454,58 @@ if __name__ == '__main__':
     train_set, valid_set, test_set = np.load('data/mnist3.npy')
 
     '''
-    # Test the training
+    ### Test the neural network
     start_time = time.time()
     net = NN()
-    net.train(train_set, valid_set, epoch=1)
+    net, _, _ = net.train(train_set, valid_set, epoch=10)
+    print("Accuracy: {}".format(net.test(test_set)))
     elapsed_time = time.time() - start_time
     print('Training time = ', elapsed_time)
-    print("Accuracy: {}".format(net.test(test_set)))
-    # 40s for 10 000 pass without vectorisation
-    # 4s with batch size = 16 for the same number also better results
     '''
     '''
-    # Normal
-    net = NN(init_method=1, lambd=0.1)
-    net, _, _ = net.train(train_set, valid_set, epoch=4)
-    print("Accuracy: {}".format(net.test(test_set)))
-    net.save(name='normal.npy')
-    print("Normal: {}".format(net))
-    '''
-    '''
-    # Glorot
-    net = NN(init_method=2, lambd=0.1)
-    net, _, _ = net.train(train_set, valid_set, epoch=4)
-    print("Accuracy: {}".format(net.test(test_set)))
-    net.save(name='glorot.npy')
-    print("Glorot: {}".format(net))
-    '''
-    '''
+    ### Compare the initialization methods
     # Zero
-    net = NN(init_method=0, lambd=0.1)
-    net, _, _ = net.train(train_set, valid_set, epoch=4)
+    net = NN(init_method=0)
+    zero_net, zero_training_loss, _ = net.train(train_set, valid_set)
+    zero_net.save(name='zero.npy')
+
+    # Normal
+    net = NN(init_method=1)
+    normal_net, normal_training_loss, _ = net.train(train_set, valid_set)
+    normal_net.save(name='normal.npy')
+
+    # Glorot
+    net = NN(init_method=2)
+    glorot_net, glorot_training_loss, _ = net.train(train_set, valid_set)
+    glorot_net.save(name='glorot.npy')
+
+    # Print the results
+    print("Accuracy: zero {}; normal {}; glorot {}".format(zero_net.test(test_set), normal_net.test(test_set),
+                                                           glorot_net.test(test_set)))
     x = range(1, 11)
-    zero = [2.303 for i in x]
-
-    print(glorot)
-    print(normal)
-    print(zero)
-    # [0.3313110359219607, 0.278203561038047, 0.27245356025651, 0.270768605866088, 0.27021384828256084, 0.2698946275128716, 0.2699768048668205, 0.27008109747934655, 0.2701660349959337, 0.27084915005548876]
-    # [0.33634069937246813, 0.278272198137196, 0.27254340211815475, 0.27030638072299945, 0.269998828237002, 0.2704305975279742, 0.2710364760484686, 0.2709348648177925, 0.27110026319298175, 0.2716033660764445]
-    # [2.303, 2.303, 2.303, 2.303, 2.303, 2.303, 2.303, 2.303, 2.303, 2.303]
-
-    plt.plot(x, zero, label='Zero')
-    plt.plot(x, normal, label='Normal')
-    plt.plot(x, glorot, label='Glorot')
+    plt.plot(x, zero_training_loss, label='Zero')
+    plt.plot(x, normal_training_loss, 'go', label='Normal')
+    plt.plot(x, glorot_training_loss, 'r--', label='Glorot')
     plt.xlabel('Epoch')
     plt.ylabel('Training Loss')
     plt.legend()
     plt.savefig('Learning.pdf')
     plt.show()
-
-    # test saving module
-    # net = NN(non_linearity='relu', alpha=0.01)
-    # net, _, _ = net.train(training_data=train_set, validation_data=valid_set, epoch=5)
-    # print(net.test(test_data=valid_set))
-    # net.save(save_path='test.npy')
-    # net = NN(save_path='test.npy')
-    # print(net.layers)
-    # net.train(train_set)
     '''
     '''
-    # x, y = train_set
-    # x = np.concatenate((x, np.ones(len(x))[:, np.newaxis]), axis=1)
-    # k = random.randint(0, 150)
-    # input, label = x[k][:, np.newaxis], y[k]
+    ### Random search
+    # random_search(name='random_search_2', duration=4 * 3600, epoch=5)
+    net = NN(save_path='random_search.npy')
+    print(net.test(test_set))
+    '''
+    # '''
+    ### Finite gradient approximation
     net = NN(save_path='glorot.npy')
 
     np.random.seed(8)
     input = np.randn(785, 1)
     input[-1] = 1
     label = 3
-    # estimated, experimental = net.validate_gradient(input, label, epsilon=0.1, p=6)
-    # print(estimated, experimental)
 
     ks = range(1, 6)
     i_range = range(6)
@@ -541,11 +520,6 @@ if __name__ == '__main__':
     plt.plot(log_eps, res)
     plt.xlabel('Log(epsilon)')
     plt.ylabel('Mean distance')
-    plt.legend()
     plt.savefig('Finite_difference_validation.pdf')
     plt.show()
-    '''
-    # random_search(name='random_search_2', duration=4 * 3600, epoch=5)
-    net = NN()
-    net.load(name='random_search.npy')
-    print(net.test(test_set))
+    # '''
