@@ -8,6 +8,7 @@ import copy
 
 class NN:
 
+
     def __init__(self, hidden_dims=(700, 300), input_size=784, output_size=10, init_method=2,
                  non_linearity='relu', batch_size=16, alpha=0.01, lambd=0.3, save_path=None):
         """
@@ -501,7 +502,7 @@ if __name__ == '__main__':
     plt.xlabel('Epoch')
     plt.ylabel('Training Loss')
     plt.legend()
-    plt.savefig('Learning_fixed.pdf')
+    plt.savefig('Learning.pdf')
     plt.show()
 
     # test saving module

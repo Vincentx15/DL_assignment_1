@@ -5,6 +5,7 @@ import torch.nn as nn
 import torchvision
 from torch.utils.data.sampler import SubsetRandomSampler
 import time
+import json
 
 # Get Data and DataLoader
 mnist_transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
@@ -13,9 +14,7 @@ mnist_test = torchvision.datasets.MNIST(root='./data', train=False, transform=mn
 
 batch_size = 64
 
-device = None
-if torch.cuda.is_available():
-    device = torch.device("cuda:0")
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Create indices and sampler
 validation_split = .2
@@ -31,11 +30,26 @@ validation_loader = torch.utils.data.DataLoader(mnist_train, batch_size=batch_si
 test_loader = torch.utils.data.DataLoader(mnist_test, batch_size=batch_size)
 
 
+class Writer:
+    """
+    Class for writing training logs.
+    """
+
+    def __init__(self, file):
+        self.file = file
+
+    def __call__(self, data_dict):
+        with open(self.file, 'a') as f:
+            f.write(json.dumps(data_dict) + '\n')
+
+
 # Tune Net
 def train():
     net = ToyConvNet()
-    if device:
-        net = net.cuda()
+    net = net.to(device)
+
+    writer = Writer('logs/q2.json')
+
     optimizer = torch.optim.Adam(net.parameters(), lr=1e-4)
     criterion = nn.CrossEntropyLoss()
 
@@ -43,8 +57,7 @@ def train():
 
         running_loss = 0.0
         for i, (inputs, labels) in enumerate(train_loader):
-            if device:
-                inputs, labels = inputs.cuda(), labels.cuda()
+            inputs, labels = inputs.to(device), labels.to(device)
 
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -57,23 +70,28 @@ def train():
 
             # print statistics
             running_loss += loss.item()
-            if not i % 200:  # print every 2000 mini-batches
+            if i > 0 and i % 200 == 0:  # print every 2000 mini-batches
                 print('[%d, %5d] loss: %.3f' %
-                      (epoch + 1, i + 1, running_loss / 200))
+                      (epoch + 1, i, running_loss / 200))
                 running_loss = 0.0
 
         net.eval()
         total = 0
         correct = 0
         for i, (inputs, labels) in enumerate(validation_loader):
-            if device:
-                inputs, labels = inputs.cuda(), labels.cuda()
+            inputs, labels = inputs.to(device), labels.to(device)
             outputs = net(inputs)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += int(predicted.eq(labels.data).cpu().sum())
         print('Epoch : %d Valid Acc : %.3f' % (epoch + 1, 100. * correct / total))
         net.train()
+
+        writer({
+            'epoch': epoch,
+            'accuracy': round(correct / total, 4),
+            'time': round(start_time - time.time() / 60, 2)
+        })
 
 
 start_time = time.time()
