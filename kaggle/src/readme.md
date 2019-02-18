@@ -27,6 +27,7 @@ Only `name` and `model` are required fields. The possible values for `model` are
 * `"cnn"` for [`cnn.Network`](models/cnn.py#L5)
 * `"resnet"` for [`resnet.ResNet`](models/resnet.py#L46)
 * `"huge-cnn"` for [`cnn.HugeNetwork`](models/cnn.py#L64)
+* `"meganet"` for [`meganet.MegaNet`](models/meganet.py#L4)
 
 See the [docstrings for the `run_experiment()` method](run.py#L23) in `run.py` for more information on each field.
 
